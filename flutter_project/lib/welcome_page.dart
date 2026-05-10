@@ -10,87 +10,119 @@ class WelcomePage extends StatelessWidget {
     return Scaffold(
       body: Container(
         width: double.infinity,
+
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF4A00E0),
-              Color(0xFF12002F),
-            ],
+            colors: [Color(0xFF4A00E0), Color(0xFF12002F)],
           ),
         ),
 
         child: SafeArea(
           child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(25),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(25),
 
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // ================= LOGO =================
+                    Container(
+                      padding: const EdgeInsets.all(18),
 
-                  // ================= TITLE =================
-                  const Text(
-                    "Welcome",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 38,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
 
-                  const SizedBox(height: 8),
-
-                  const Text(
-                    "Manage your tasks easily ✨",
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 15,
-                    ),
-                  ),
-
-                  const SizedBox(height: 60),
-
-                  // ================= LOGIN BUTTON =================
-                  _glassButton(
-                    text: "Log in",
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const LoginPage(),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.white.withOpacity(0.20),
+                            Colors.white.withOpacity(0.08),
+                          ],
                         ),
-                      );
-                    },
-                  ),
 
-                  const SizedBox(height: 18),
-
-                  // ================= SIGNUP BUTTON =================
-                  _glassButton(
-                    text: "Sign up",
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SignUpPage(),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.15),
                         ),
-                      );
-                    },
-                  ),
 
-                  const SizedBox(height: 30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.25),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
 
-                  const Text(
-                    "Start organizing your life now",
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 12,
+                      child: ClipOval(
+                        child: Image.asset(
+                          "assets/Logo_Image.png",
+                          width: 130,
+                          height: 130,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+
+                    const SizedBox(height: 35),
+
+                    // ================= TITLE =================
+                    const Text(
+                      "Task Manager",
+                      textAlign: TextAlign.center,
+
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 38,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    const Text(
+                      "Manage your tasks easily ✨",
+                      textAlign: TextAlign.center,
+
+                      style: TextStyle(color: Colors.white70, fontSize: 15),
+                    ),
+
+                    const SizedBox(height: 60),
+
+                    // ================= LOGIN BUTTON =================
+                    _glassButton(
+                      text: "Log in",
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginPage()),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    // ================= SIGNUP BUTTON =================
+                    _glassButton(
+                      text: "Sign up",
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const SignUpPage()),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    const Text(
+                      "Start organizing your life now",
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -100,24 +132,23 @@ class WelcomePage extends StatelessWidget {
   }
 
   // ================= REUSABLE BUTTON =================
-  Widget _glassButton({
-    required String text,
-    required VoidCallback onTap,
-  }) {
+  Widget _glassButton({required String text, required VoidCallback onTap}) {
     return Container(
       width: 240,
       height: 50,
+
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
+
         gradient: LinearGradient(
           colors: [
             Colors.white.withOpacity(0.25),
             Colors.white.withOpacity(0.10),
           ],
         ),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-        ),
+
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.3),
@@ -129,12 +160,15 @@ class WelcomePage extends StatelessWidget {
 
       child: Material(
         color: Colors.transparent,
+
         child: InkWell(
           borderRadius: BorderRadius.circular(30),
           onTap: onTap,
+
           child: Center(
             child: Text(
               text,
+
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,

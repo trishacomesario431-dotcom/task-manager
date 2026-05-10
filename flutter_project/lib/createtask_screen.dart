@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'task_data.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_project/notification_service.dart';
 
 class CreateTaskScreen extends StatefulWidget {
   const CreateTaskScreen({super.key});
@@ -10,6 +13,8 @@ class CreateTaskScreen extends StatefulWidget {
 
 class _CreateTaskScreenState extends State<CreateTaskScreen> {
   String selectedCategory = "Study";
+  String selectedStatus = "To Do";
+  String selectedPriority = "Medium";
 
   DateTime? selectedDate;
   TimeOfDay? startTime;
@@ -51,9 +56,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       builder: (context, child) {
         return Theme(
           data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFFFF6FD8),
-            ),
+            colorScheme: const ColorScheme.dark(primary: Color(0xFFFF6FD8)),
           ),
           child: child!,
         );
@@ -72,7 +75,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   }
 
   // ================= SAVE TASK =================
-  void saveTask() {
+  Future<void> saveTask() async {
     if (titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -83,25 +86,58 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       return;
     }
 
-    allTasks.add(
-      TaskModel(
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) return;
+
+      final taskId = FirebaseFirestore.instance.collection('tasks').doc().id;
+
+      final task = TaskModel(
+        status: selectedStatus,
+        priority: selectedPriority,
+        id: taskId,
         title: titleController.text.trim(),
         description: descriptionController.text.trim(),
         category: selectedCategory,
         date: selectedDate == null
             ? "No Date"
             : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
-      ),
-    );
+        uid: user.uid,
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Task Saved Successfully ✨"),
-        backgroundColor: Colors.green,
-      ),
-    );
+      // SAVE TASK
+      await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(taskId)
+          .set(task.toMap());
 
-    Navigator.pop(context);
+      // CREATE NOTIFICATION
+      await FirebaseFirestore.instance.collection('notifications').add({
+        "uid": user.uid,
+        "title": "Task Created ✨",
+        "message":
+            "${titleController.text.trim()} has been added successfully.",
+        "time": Timestamp.now(),
+        "isRead": false,
+      });
+
+      // PHONE NOTIFICATION
+      await NotificationService.showNotification();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Task Saved Successfully ✨"),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+      );
+    }
   }
 
   // ================= DELETE =================
@@ -111,9 +147,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF2A0A4A),
 
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(25),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
 
         title: const Text(
           "Delete Task?",
@@ -179,11 +213,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFF6A11CB),
-              Color(0xFF3B0F9C),
-              Color(0xFF240046),
-            ],
+            colors: [Color(0xFF6A11CB), Color(0xFF3B0F9C), Color(0xFF240046)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -196,11 +226,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 // ================= HEADER =================
                 Row(
                   children: [
-
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
 
@@ -270,9 +298,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                       ],
                     ),
 
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.08),
-                    ),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
 
                     boxShadow: [
                       BoxShadow(
@@ -286,11 +312,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
-                      const Text(
-                        "Task Title",
-                        style: _labelStyle,
-                      ),
+                      const Text("Task Title", style: _labelStyle),
 
                       const SizedBox(height: 12),
 
@@ -302,10 +324,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
                       const SizedBox(height: 25),
 
-                      const Text(
-                        "Due Date",
-                        style: _labelStyle,
-                      ),
+                      const Text("Due Date", style: _labelStyle),
 
                       const SizedBox(height: 12),
 
@@ -315,7 +334,6 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
                       Row(
                         children: [
-
                           Expanded(
                             child: _timeField(
                               "Start Time",
@@ -338,10 +356,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
                       const SizedBox(height: 30),
 
-                      const Text(
-                        "Category",
-                        style: _labelStyle,
-                      ),
+                      const Text("Category", style: _labelStyle),
 
                       const SizedBox(height: 18),
 
@@ -355,13 +370,41 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                           _category("Home"),
                         ],
                       ),
+                      const SizedBox(height: 30),
+
+                      const Text("Task Status", style: _labelStyle),
+
+                      const SizedBox(height: 18),
+
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          _statusChip("To Do"),
+                          _statusChip("In Progress"),
+                          _statusChip("Completed"),
+                        ],
+                      ),
 
                       const SizedBox(height: 30),
 
-                      const Text(
-                        "Description",
-                        style: _labelStyle,
+                      const Text("Priority", style: _labelStyle),
+
+                      const SizedBox(height: 18),
+
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          _priorityChip("Low"),
+                          _priorityChip("Medium"),
+                          _priorityChip("High"),
+                        ],
                       ),
+
+                      const SizedBox(height: 30),
+
+                      const Text("Description", style: _labelStyle),
 
                       const SizedBox(height: 12),
 
@@ -375,7 +418,6 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                 // ================= BUTTONS =================
                 Row(
                   children: [
-
                     Expanded(
                       child: SizedBox(
                         height: 60,
@@ -384,13 +426,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                           onPressed: deleteTask,
 
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(
-                              color: Colors.white38,
-                            ),
+                            side: const BorderSide(color: Colors.white38),
 
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                           ),
 
@@ -421,21 +460,16 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                             padding: EdgeInsets.zero,
 
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                           ),
 
                           child: Ink(
                             decoration: BoxDecoration(
-                              borderRadius:
-                                  BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(20),
 
                               gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFFFF6FD8),
-                                  Color(0xFFFF9068),
-                                ],
+                                colors: [Color(0xFFFF6FD8), Color(0xFFFF9068)],
                               ),
                             ),
 
@@ -485,9 +519,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         color: Colors.white.withOpacity(0.10),
         borderRadius: BorderRadius.circular(22),
 
-        border: Border.all(
-          color: Colors.white.withOpacity(0.08),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
 
       child: TextField(
@@ -517,18 +549,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           color: Colors.white.withOpacity(0.10),
           borderRadius: BorderRadius.circular(22),
 
-          border: Border.all(
-            color: Colors.white.withOpacity(0.08),
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
 
         child: Row(
           children: [
-
-            const Icon(
-              Icons.calendar_month_rounded,
-              color: Colors.white,
-            ),
+            const Icon(Icons.calendar_month_rounded, color: Colors.white),
 
             const SizedBox(width: 14),
 
@@ -537,10 +563,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   ? "Select date"
                   : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
 
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
           ],
         ),
@@ -549,11 +572,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   }
 
   // ================= TIME FIELD =================
-  Widget _timeField(
-    String label,
-    bool isStart,
-    IconData icon,
-  ) {
+  Widget _timeField(String label, bool isStart, IconData icon) {
     return GestureDetector(
       onTap: () => pickTime(isStart),
 
@@ -564,30 +583,20 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           color: Colors.white.withOpacity(0.10),
           borderRadius: BorderRadius.circular(22),
 
-          border: Border.all(
-            color: Colors.white.withOpacity(0.08),
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
 
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            Icon(
-              icon,
-              color: Colors.white,
-              size: 28,
-            ),
+            Icon(icon, color: Colors.white, size: 28),
 
             const SizedBox(height: 15),
 
             Text(
               label,
 
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
             ),
 
             const SizedBox(height: 5),
@@ -623,26 +632,105 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
 
-        padding: const EdgeInsets.symmetric(
-          horizontal: 22,
-          vertical: 14,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
 
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
 
           gradient: isSelected
               ? const LinearGradient(
-                  colors: [
-                    Color(0xFFFF6FD8),
-                    Color(0xFFFF9068),
-                  ],
+                  colors: [Color(0xFFFF6FD8), Color(0xFFFF9068)],
                 )
               : null,
 
-          color: isSelected
-              ? null
-              : Colors.white.withOpacity(0.10),
+          color: isSelected ? null : Colors.white.withOpacity(0.10),
+        ),
+
+        child: Text(
+          label,
+
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _statusChip(String label) {
+    final isSelected = selectedStatus == label;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedStatus = label;
+        });
+      },
+
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+
+          gradient: isSelected
+              ? const LinearGradient(
+                  colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
+                )
+              : null,
+
+          color: isSelected ? null : Colors.white.withOpacity(0.10),
+        ),
+
+        child: Text(
+          label,
+
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _priorityChip(String label) {
+    final isSelected = selectedPriority == label;
+
+    Color chipColor;
+
+    switch (label) {
+      case "Low":
+        chipColor = Colors.green;
+        break;
+
+      case "High":
+        chipColor = Colors.red;
+        break;
+
+      default:
+        chipColor = Colors.orange;
+    }
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedPriority = label;
+        });
+      },
+
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+
+          color: isSelected ? chipColor : Colors.white.withOpacity(0.10),
         ),
 
         child: Text(
@@ -667,9 +755,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         color: Colors.white.withOpacity(0.10),
         borderRadius: BorderRadius.circular(25),
 
-        border: Border.all(
-          color: Colors.white.withOpacity(0.08),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
 
       child: TextField(

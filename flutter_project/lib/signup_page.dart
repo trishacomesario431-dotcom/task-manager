@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'home_screen.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -11,6 +13,7 @@ class SignUpPage extends StatefulWidget {
 class _SignUpPageState extends State<SignUpPage> {
   bool isPasswordHidden = true;
   bool isConfirmPasswordHidden = true;
+  bool _isLoading = false;
 
   final TextEditingController nameCtrl = TextEditingController();
   final TextEditingController emailCtrl = TextEditingController();
@@ -18,31 +21,93 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController passCtrl = TextEditingController();
   final TextEditingController confirmCtrl = TextEditingController();
 
-  void register() {
-    if (nameCtrl.text.isEmpty ||
-        emailCtrl.text.isEmpty ||
-        userCtrl.text.isEmpty ||
-        passCtrl.text.isEmpty ||
-        confirmCtrl.text.isEmpty) {
-      showMsg("Please fill all fields");
+  Future<void> register() async {
+    final name = nameCtrl.text.trim();
+    final email = emailCtrl.text.trim();
+    final username = userCtrl.text.trim();
+    final password = passCtrl.text.trim();
+    final confirmPassword = confirmCtrl.text.trim();
+
+    if (name.isEmpty ||
+        email.isEmpty ||
+        username.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
+      showMsg("Please fill all fields", Colors.red);
       return;
     }
 
-    if (passCtrl.text != confirmCtrl.text) {
-      showMsg("Passwords do not match");
+    if (password != confirmPassword) {
+      showMsg("Passwords do not match", Colors.red);
       return;
     }
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const HomeScreen()),
-    );
+    if (password.length < 6) {
+      showMsg("Password must be at least 6 characters", Colors.red);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      UserCredential credential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
+
+      final user = credential.user;
+
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'name': name,
+          'email': email,
+          'username': username,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      if (!mounted) return;
+
+      showMsg("Account created successfully ✅", Colors.green);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } on FirebaseAuthException catch (e) {
+      String message = "Registration failed ❌";
+
+      if (e.code == 'email-already-in-use') {
+        message = "This email is already registered";
+      } else if (e.code == 'invalid-email') {
+        message = "Invalid email format";
+      } else if (e.code == 'weak-password') {
+        message = "Password is too weak";
+      }
+
+      showMsg(message, Colors.red);
+    } catch (e) {
+      showMsg("Something went wrong: $e", Colors.red);
+    }
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
-  void showMsg(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
+  void showMsg(String msg, Color color) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
+  }
+
+  @override
+  void dispose() {
+    nameCtrl.dispose();
+    emailCtrl.dispose();
+    userCtrl.dispose();
+    passCtrl.dispose();
+    confirmCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -51,18 +116,13 @@ class _SignUpPageState extends State<SignUpPage> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFF6A11CB),
-              Color(0xFF2A0845),
-            ],
+            colors: [Color(0xFF6A11CB), Color(0xFF2A0845)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
         child: Stack(
           children: [
-
-            /// 🔙 BACK BUTTON
             Positioned(
               top: 40,
               left: 15,
@@ -78,7 +138,6 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
             ),
 
-            /// SIGNUP CARD
             Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 25),
@@ -93,7 +152,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         color: Colors.black26,
                         blurRadius: 20,
                         offset: Offset(0, 10),
-                      )
+                      ),
                     ],
                   ),
                   child: Column(
@@ -114,6 +173,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+
                       const SizedBox(height: 5),
 
                       const Text(
@@ -142,7 +202,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: register,
+                          onPressed: _isLoading ? null : register,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
@@ -150,14 +210,16 @@ class _SignUpPageState extends State<SignUpPage> {
                             ),
                             elevation: 5,
                           ),
-                          child: const Text(
-                            "REGISTER",
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
+                          child: _isLoading
+                              ? const CircularProgressIndicator()
+                              : const Text(
+                                  "REGISTER",
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
                         ),
                       ),
                     ],
@@ -174,6 +236,9 @@ class _SignUpPageState extends State<SignUpPage> {
   Widget _input(String hint, IconData icon, TextEditingController ctrl) {
     return TextField(
       controller: ctrl,
+      keyboardType: hint == "Email"
+          ? TextInputType.emailAddress
+          : TextInputType.text,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: Colors.white),
@@ -236,9 +301,7 @@ class _SignUpPageState extends State<SignUpPage> {
         ),
         suffixIcon: IconButton(
           icon: Icon(
-            isConfirmPasswordHidden
-                ? Icons.visibility_off
-                : Icons.visibility,
+            isConfirmPasswordHidden ? Icons.visibility_off : Icons.visibility,
             color: Colors.white70,
           ),
           onPressed: () {

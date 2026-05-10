@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'home_screen.dart';
+import 'signup_page.dart';
+import 'welcome_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -9,27 +12,69 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
-  void login() {
-    String username = usernameController.text.trim();
-    String password = passwordController.text.trim();
+  Future<void> login() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
 
-    if (username == "admin" && password == "123456") {
+    if (email.isEmpty || password.isEmpty) {
+      showMsg("Please enter email and password ❌", Colors.red);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      if (!mounted) return;
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Invalid username or password ❌"),
-          backgroundColor: Colors.red,
-        ),
-      );
+    } on FirebaseAuthException catch (e) {
+      String message = "Login failed ❌";
+
+      if (e.code == 'user-not-found') {
+        message = "No user found with this email";
+      } else if (e.code == 'wrong-password') {
+        message = "Wrong password";
+      } else if (e.code == 'invalid-email') {
+        message = "Invalid email format";
+      } else if (e.code == 'invalid-credential') {
+        message = "Invalid email or password";
+      }
+
+      showMsg(message, Colors.red);
+    } catch (e) {
+      showMsg("Something went wrong: $e", Colors.red);
     }
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void showMsg(String msg, Color color) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -40,16 +85,11 @@ class _LoginPageState extends State<LoginPage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF6A11CB),
-              Color(0xFF2A0845),
-            ],
+            colors: [Color(0xFF6A11CB), Color(0xFF2A0845)],
           ),
         ),
         child: Stack(
           children: [
-
-            /// 🔙 BACK BUTTON
             Positioned(
               top: 40,
               left: 15,
@@ -60,12 +100,16 @@ class _LoginPageState extends State<LoginPage> {
                   size: 28,
                 ),
                 onPressed: () {
-                  Navigator.pop(context);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const WelcomePage(),
+                    ),
+                  );
                 },
               ),
             ),
 
-            /// LOGIN CARD
             Center(
               child: SingleChildScrollView(
                 child: Padding(
@@ -81,7 +125,7 @@ class _LoginPageState extends State<LoginPage> {
                           color: Colors.black26,
                           blurRadius: 20,
                           offset: Offset(0, 10),
-                        )
+                        ),
                       ],
                     ),
                     child: Column(
@@ -102,6 +146,7 @@ class _LoginPageState extends State<LoginPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+
                         const SizedBox(height: 5),
 
                         const Text(
@@ -112,9 +157,9 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 30),
 
                         _inputField(
-                          controller: usernameController,
-                          hint: "Username",
-                          icon: Icons.person,
+                          controller: emailController,
+                          hint: "Email",
+                          icon: Icons.email,
                           obscure: false,
                         ),
 
@@ -134,7 +179,7 @@ class _LoginPageState extends State<LoginPage> {
                           width: double.infinity,
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: login,
+                            onPressed: _isLoading ? null : login,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
@@ -142,14 +187,33 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               elevation: 5,
                             ),
-                            child: const Text(
-                              "LOGIN",
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2,
+                            child: _isLoading
+                                ? const CircularProgressIndicator()
+                                : const Text(
+                                    "LOGIN",
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 15),
+
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SignUpPage(),
                               ),
-                            ),
+                            );
+                          },
+                          child: const Text(
+                            "Don't have an account? Sign up",
+                            style: TextStyle(color: Colors.white),
                           ),
                         ),
                       ],
@@ -174,6 +238,9 @@ class _LoginPageState extends State<LoginPage> {
     return TextField(
       controller: controller,
       obscureText: obscure,
+      keyboardType: hint == "Email"
+          ? TextInputType.emailAddress
+          : TextInputType.text,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: Colors.white),

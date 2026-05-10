@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_project/splashscreen_page.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-void main() {
+import 'package:flutter_project/firebase_options.dart';
+import 'package:flutter_project/notification_service.dart';
+import 'package:flutter_project/SplashScreen_page.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await NotificationService.init();
+
   runApp(const MyApp());
 }
 
@@ -10,9 +20,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: SplashscreenPage(), // ✅ DAPAT ITO
+      home: const SplashscreenPage(),
     );
   }
 }
