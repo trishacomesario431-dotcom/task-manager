@@ -24,6 +24,7 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true
@@ -32,3 +33,10 @@ flutter:
     - assets/Logo_Image.png
     - assets/profile.png
     - assets/shang.png
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/Logo_Image.png"
+  adaptive_icon_background: "#6A11CB"
+  adaptive_icon_foreground: "assets/Logo_Image.png"

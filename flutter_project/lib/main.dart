@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_project/firebase_options.dart';
 import 'package:flutter_project/notification_service.dart';
 import 'package:flutter_project/SplashScreen_page.dart';
+import 'auth_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +23,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const SplashscreenPage(),
+      home: const AuthGate(),
     );
   }
 }
