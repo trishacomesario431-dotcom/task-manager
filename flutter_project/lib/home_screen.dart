@@ -100,10 +100,20 @@ class _HomeScreenState extends State<HomeScreen> {
                               return CircleAvatar(
                                 radius: 28,
                                 backgroundImage:
-                                    profileImage.toString().isNotEmpty
+                                    profileImage != null &&
+                                        profileImage.toString().isNotEmpty
                                     ? NetworkImage(profileImage)
-                                    : const AssetImage("assets/profile.png")
-                                          as ImageProvider,
+                                    : null,
+
+                                child:
+                                    profileImage == null ||
+                                        profileImage.toString().isEmpty
+                                    ? const Icon(
+                                        Icons.person,
+                                        color: Colors.white,
+                                        size: 32,
+                                      )
+                                    : null,
                               );
                             },
                           ),
@@ -138,7 +148,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                         as Map<String, dynamic>? ??
                                     {};
 
-                                final name = userData['name'] ?? 'Task Manager';
+                                final name =
+                                    userData['name'] == null ||
+                                        userData['name']
+                                            .toString()
+                                            .trim()
+                                            .isEmpty
+                                    ? 'Welcome User'
+                                    : userData['name'];
 
                                 return Text(
                                   name,

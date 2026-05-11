@@ -269,8 +269,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       profileImage != null &&
                                           profileImage.toString().isNotEmpty
                                       ? NetworkImage(profileImage)
-                                      : const AssetImage("assets/profile.png")
-                                            as ImageProvider,
+                                      : null,
+
+                                  child:
+                                      profileImage == null ||
+                                          profileImage.toString().isEmpty
+                                      ? const Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                          size: 32,
+                                        )
+                                      : null,
                                 ),
                               ),
                               if (isUploading)

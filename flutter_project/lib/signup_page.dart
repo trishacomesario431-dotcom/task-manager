@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'home_screen.dart';
+
+import 'login_page.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -50,7 +51,7 @@ class _SignUpPageState extends State<SignUpPage> {
     setState(() => _isLoading = true);
 
     try {
-      UserCredential credential = await FirebaseAuth.instance
+      final credential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: email, password: password);
 
       final user = credential.user;
@@ -61,17 +62,26 @@ class _SignUpPageState extends State<SignUpPage> {
           'name': name,
           'email': email,
           'username': username,
+          'profileImage': '',
+          'course': '',
+          'bio': '',
+          'dailyGoal': 5,
+          'reminderTime': '8:00 PM',
+          'notificationsEnabled': true,
           'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
         });
       }
 
+      await FirebaseAuth.instance.signOut();
+
       if (!mounted) return;
 
-      showMsg("Account created successfully ✅", Colors.green);
+      showMsg("Account created. Please log in ✅", Colors.green);
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        MaterialPageRoute(builder: (context) => const LoginPage()),
       );
     } on FirebaseAuthException catch (e) {
       String message = "Registration failed ❌";
