@@ -25,10 +25,10 @@ class NotificationService {
   static Future<void> showNotification() async {
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
-        id: 1,
+        id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
         channelKey: 'task_channel',
-        title: 'Task Reminder ⏰',
-        body: 'Don’t forget your pending tasks today.',
+        title: 'Task Created ✨',
+        body: 'Your task has been added successfully.',
         notificationLayout: NotificationLayout.Default,
       ),
     );

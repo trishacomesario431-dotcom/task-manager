@@ -47,8 +47,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('notifications')
-                    .where('uid', isEqualTo: user?.uid)
-                    .orderBy('time', descending: true)
+                    .where(
+                      'uid',
+                      isEqualTo: FirebaseAuth.instance.currentUser?.uid,
+                    )
                     .snapshots(),
 
                 builder: (context, snapshot) {
@@ -107,6 +109,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   }
 
                   final notifications = snapshot.data!.docs;
+
+                  notifications.sort((a, b) {
+                    final aData = a.data() as Map<String, dynamic>;
+                    final bData = b.data() as Map<String, dynamic>;
+
+                    final aTime = aData['time'] as Timestamp?;
+                    final bTime = bData['time'] as Timestamp?;
+
+                    return (bTime?.toDate() ?? DateTime.now()).compareTo(
+                      aTime?.toDate() ?? DateTime.now(),
+                    );
+                  });
 
                   return Column(
                     children: notifications.map((doc) {
